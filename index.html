@@ -1,1 +1,348 @@
-SW error TypeError: Failed to register a ServiceWorker for scope ('https://www.claudeusercontent.com/accounts-manager/') with script ('https://www.claudeusercontent.com/accounts-manager/sw.js'): A bad HTTP response code (404) was received when fetching the script.
+<!DOCTYPE html>
+<html lang="lt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#E1306C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Accounts">
+<title>Social Media Account Manager</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f0f0f; color: #fff; padding: 20px; }
+  h1 { text-align: center; font-size: 22px; margin-bottom: 6px; background: linear-gradient(135deg, #E1306C, #F7931A, #00BCD4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .subtitle { text-align: center; color: #888; font-size: 13px; margin-bottom: 20px; }
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+  .stat { background: #1a1a1a; border-radius: 10px; padding: 12px; text-align: center; border: 1px solid #333; }
+  .stat-num { font-size: 24px; font-weight: bold; }
+  .stat-label { font-size: 11px; color: #888; margin-top: 4px; }
+  .stat.ig .stat-num { color: #E1306C; }
+  .stat.tt .stat-num { color: #00f2ea; }
+  .stat.fb .stat-num { color: #1877F2; }
+  .stat.total .stat-num { color: #4CAF50; }
+  .controls { display: flex; gap: 10px; margin-bottom: 16px; flex-direction: column; }
+  .btn { padding: 10px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn-add { background: linear-gradient(135deg, #E1306C, #F7931A); color: white; }
+  .btn-export { background: #1a1a1a; color: #4CAF50; border: 1px solid #4CAF50; }
+  .btn-copy { background: #1a1a1a; color: #00BCD4; border: 1px solid #00BCD4; }
+  .filters { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .filter-btn { padding: 5px 12px; border-radius: 20px; border: 1px solid #333; background: #1a1a1a; color: #888; cursor: pointer; font-size: 12px; }
+  .filter-btn.active { background: #333; color: #fff; border-color: #666; }
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid #222; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead { background: #1a1a1a; }
+  th { padding: 10px 12px; text-align: left; color: #888; font-weight: 600; white-space: nowrap; border-bottom: 1px solid #222; }
+  td { padding: 9px 12px; border-bottom: 1px solid #1a1a1a; vertical-align: middle; }
+  tr:hover td { background: #1a1a1a; }
+  .platform { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .platform.instagram { background: rgba(225,48,108,0.15); color: #E1306C; }
+  .platform.tiktok { background: rgba(0,242,234,0.15); color: #00f2ea; }
+  .platform.facebook { background: rgba(24,119,242,0.15); color: #1877F2; }
+  .status { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .status.active { background: rgba(76,175,80,0.15); color: #4CAF50; }
+  .status.warming { background: rgba(255,152,0,0.15); color: #FF9800; }
+  .status.new { background: rgba(33,150,243,0.15); color: #2196F3; }
+  .status.banned { background: rgba(244,67,54,0.15); color: #f44336; }
+  .nisa { display: inline-block; padding: 2px 7px; border-radius: 8px; font-size: 11px; background: #222; color: #ccc; }
+  .warming-bar { width: 60px; height: 6px; background: #222; border-radius: 3px; overflow: hidden; }
+  .warming-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #E1306C, #F7931A); }
+  .pass-cell { display: flex; align-items: center; gap: 6px; }
+  .pass-text { font-family: monospace; font-size: 11px; color: #888; }
+  .eye-btn { background: none; border: none; color: #555; cursor: pointer; font-size: 14px; }
+  .tag { font-family: monospace; color: #00BCD4; font-size: 11px; }
+  .action-btn { background: none; border: none; cursor: pointer; padding: 3px 6px; border-radius: 4px; font-size: 13px; }
+  .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+  .modal.open { display: flex; }
+  .modal-box { background: #1a1a1a; border-radius: 16px; padding: 24px; width: 100%; max-width: 400px; border: 1px solid #333; max-height: 90vh; overflow-y: auto; }
+  .modal-title { font-size: 16px; font-weight: bold; margin-bottom: 20px; }
+  .form-group { margin-bottom: 14px; }
+  label { display: block; font-size: 12px; color: #888; margin-bottom: 6px; }
+  input, select { width: 100%; padding: 9px 12px; background: #0f0f0f; border: 1px solid #333; border-radius: 8px; color: #fff; font-size: 13px; }
+  .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+  .btn-save { flex: 1; background: linear-gradient(135deg, #E1306C, #F7931A); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer; }
+  .btn-cancel { flex: 1; background: #333; color: #fff; border: none; padding: 10px; border-radius: 8px; cursor: pointer; }
+  .export-box { display: none; background: #0f0f0f; border: 1px solid #333; border-radius: 10px; padding: 14px; margin-top: 14px; }
+  .export-box.open { display: block; }
+  .export-code { font-family: monospace; font-size: 11px; color: #4CAF50; white-space: pre; overflow-x: auto; line-height: 1.6; }
+  .toast { position: fixed; bottom: 20px; right: 20px; background: #333; color: #fff; padding: 10px 16px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 200; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+  <h1>🚀 Social Media Account Manager</h1>
+<p class="subtitle">Marketing Bot v4.0 — Account Tracker</p>
+
+<div class="stats">
+  <div class="stat total"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Viso paskyrų</div></div>
+  <div class="stat ig"><div class="stat-num" id="stat-ig">0</div><div class="stat-label">Instagram</div></div>
+  <div class="stat tt"><div class="stat-num" id="stat-tt">0</div><div class="stat-label">TikTok</div></div>
+  <div class="stat fb"><div class="stat-num" id="stat-fb">0</div><div class="stat-label">Facebook</div></div>
+</div>
+
+<div class="controls">
+  <button class="btn btn-add" onclick="openModal()">➕ Pridėti paskyrą</button>
+  <button class="btn btn-export" onclick="toggleExport()">📋 Eksportuoti accounts.js</button>
+  <button class="btn btn-copy" onclick="copyAll()">📊 Kopijuoti sąrašą</button>
+</div>
+
+<div class="filters">
+  <button class="filter-btn active" onclick="filterBy('all',this)">Visos</button>
+  <button class="filter-btn" onclick="filterBy('instagram',this)">📸 Instagram</button>
+  <button class="filter-btn" onclick="filterBy('tiktok',this)">🎵 TikTok</button>
+  <button class="filter-btn" onclick="filterBy('facebook',this)">👤 Facebook</button>
+  <button class="filter-btn" onclick="filterBy('active',this)">🟢 Aktyvios</button>
+  <button class="filter-btn" onclick="filterBy('warming',this)">🔥 Warming</button>
+  <button class="filter-btn" onclick="filterBy('new',this)">🆕 Naujos</button>
+</div>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>#</th><th>Tag</th><th>Platforma</th><th>Gmail</th>
+        <th>Slaptažodis</th><th>Tel.</th><th>Niša</th>
+        <th>Statusas</th><th>Warming</th><th>Sukurta</th><th>Veiksmai</th>
+      </tr>
+    </thead>
+    <tbody id="accounts-table"></tbody>
+  </table>
+</div>
+
+<div class="export-box" id="export-box">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <span style="font-size:13px;color:#4CAF50;">📋 accounts.js</span>
+    <button class="btn btn-copy" style="padding:4px 10px;font-size:11px;" onclick="copyExport()">Kopijuoti</button>
+  </div>
+  <pre class="export-code" id="export-code"></pre>
+</div>
+
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-title">➕ Nauja paskyra</div>
+    <div class="form-group">
+      <label>Platforma</label>
+      <select id="f-platform" onchange="updateTag()">
+        <option value="instagram">📸 Instagram</option>
+        <option value="tiktok">🎵 TikTok</option>
+        <option value="facebook">👤 Facebook</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Niša</label>
+      <select id="f-nisa" onchange="updateTag()">
+        <option value="fitness">💪 Fitness</option>
+        <option value="crypto">₿ Crypto</option>
+        <option value="motivacija">🔥 Motivacija</option>
+        <option value="mada">👗 Mada</option>
+        <option value="maistas">🍕 Maistas</option>
+        <option value="keliones">✈️ Kelionės</option>
+        <option value="verslas">💼 Verslas</option>
+        <option value="grozis">💄 Grožis</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Tag</label>
+      <input type="text" id="f-tag" placeholder="ig_fitness1" />
+    </div>
+    <div class="form-group">
+      <label>Gmail</label>
+      <input type="email" id="f-gmail" placeholder="paskyra@gmail.com" />
+    </div>
+    <div class="form-group">
+      <label>Slaptažodis</label>
+      <input type="text" id="f-password" placeholder="Slaptažodis" />
+    </div>
+    <div class="form-group">
+      <label>Telefono numeris</label>
+      <input type="text" id="f-phone" placeholder="+370 600 00000" />
+    </div>
+    <div class="form-group">
+      <label>Statusas</label>
+      <select id="f-status">
+        <option value="new">🆕 Naujas</option>
+        <option value="warming">🔥 Warming</option>
+        <option value="active">🟢 Aktyvus</option>
+        <option value="inactive">⚫ Neaktyvus</option>
+        <option value="banned">🚫 Banned</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Atšaukti</button>
+      <button class="btn-save" onclick="saveAccount()">💾 Išsaugoti</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+let accounts = JSON.parse(localStorage.getItem('sm_accounts') || '[]');
+let currentFilter = 'all';
+let editIndex = -1;
+
+const platformPrefix = { instagram: 'ig', tiktok: 'tt', facebook: 'fb' };
+const platformEmoji = { instagram: '📸', tiktok: '🎵', facebook: '👤' };
+const nisaEmoji = { fitness:'💪', crypto:'₿', motivacija:'🔥', mada:'👗', maistas:'🍕', keliones:'✈️', verslas:'💼', grozis:'💄' };
+
+function render() {
+  updateStats();
+  const tbody = document.getElementById('accounts-table');
+  const filtered = accounts.filter(a => {
+    if (currentFilter === 'all') return true;
+    if (['instagram','tiktok','facebook'].includes(currentFilter)) return a.platform === currentFilter;
+    return a.status === currentFilter;
+  });
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;color:#555;padding:30px;">Nėra paskyrų. Spauski "Pridėti paskyrą"</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map((a) => {
+    const realIdx = accounts.indexOf(a);
+    const warmW = Math.min(100, (a.warmDays || 0) * 7);
+    return `<tr>
+      <td style="color:#555">${realIdx+1}</td>
+      <td><span class="tag">${a.tag}</span></td>
+      <td><span class="platform ${a.platform}">${platformEmoji[a.platform]} ${a.platform}</span></td>
+      <td style="font-size:11px">${a.gmail}</td>
+      <td><div class="pass-cell"><span class="pass-text" id="pass-${realIdx}">••••••••</span><button class="eye-btn" onclick="togglePass(${realIdx},'${a.password}')">👁</button></div></td>
+      <td style="font-size:11px;color:#888">${a.phone||'—'}</td>
+      <td><span class="nisa">${nisaEmoji[a.nisa]||''} ${a.nisa}</span></td>
+      <td><span class="status ${a.status}">${statusLabel(a.status)}</span></td>
+      <td><div class="warming-bar"><div class="warming-fill" style="width:${warmW}%"></div></div><div style="font-size:10px;color:#555">${a.warmDays||0}/14d</div></td>
+      <td style="font-size:11px;color:#555">${a.created}</td>
+      <td><button class="action-btn" onclick="warmUp(${realIdx})">🔥</button><button class="action-btn" onclick="editAccount(${realIdx})">✏️</button><button class="action-btn" onclick="deleteAccount(${realIdx})">🗑️</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function statusLabel(s) {
+  return {active:'🟢 Aktyvus',warming:'🔥 Warming',new:'🆕 Naujas',banned:'🚫 Banned',inactive:'⚫ Neaktyvus'}[s]||s;
+}
+
+function updateStats() {
+  document.getElementById('stat-total').textContent = accounts.length;
+  document.getElementById('stat-ig').textContent = accounts.filter(a=>a.platform==='instagram').length;
+  document.getElementById('stat-tt').textContent = accounts.filter(a=>a.platform==='tiktok').length;
+  document.getElementById('stat-fb').textContent = accounts.filter(a=>a.platform==='facebook').length;
+}
+
+function filterBy(type, btn) {
+  currentFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+function openModal(idx=-1) {
+  editIndex = idx;
+  if (idx>=0) {
+    const a = accounts[idx];
+    document.getElementById('f-platform').value = a.platform;
+    document.getElementById('f-nisa').value = a.nisa;
+    document.getElementById('f-tag').value = a.tag;
+    document.getElementById('f-gmail').value = a.gmail;
+    document.getElementById('f-password').value = a.password;
+    document.getElementById('f-phone').value = a.phone||'';
+    document.getElementById('f-status').value = a.status;
+  } else {
+    document.getElementById('f-platform').value='instagram';
+    document.getElementById('f-nisa').value='fitness';
+    document.getElementById('f-gmail').value='';
+    document.getElementById('f-password').value='';
+    document.getElementById('f-phone').value='';
+    document.getElementById('f-status').value='new';
+    updateTag();
+  }
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editIndex=-1;
+}
+
+function updateTag() {
+  const platform = document.getElementById('f-platform').value;
+  const nisa = document.getElementById('f-nisa').value;
+  const prefix = platformPrefix[platform];
+  const count = accounts.filter(a=>a.platform===platform&&a.nisa===nisa).length+1;
+  document.getElementById('f-tag').value = `${prefix}_${nisa}${count}`;
+}
+
+function saveAccount() {
+  const tag=document.getElementById('f-tag').value.trim();
+  const platform=document.getElementById('f-platform').value;
+  const nisa=document.getElementById('f-nisa').value;
+  const gmail=document.getElementById('f-gmail').value.trim();
+  const password=document.getElementById('f-password').value.trim();
+  const phone=document.getElementById('f-phone').value.trim();
+  const status=document.getElementById('f-status').value;
+  if(!tag||!gmail||!password){toast('⚠️ Užpildyk tag, gmail ir slaptažodį!');return;}
+  const acc={tag,platform,nisa,gmail,password,phone,status,
+    warmDays:editIndex>=0?accounts[editIndex].warmDays:0,
+    created:editIndex>=0?accounts[editIndex].created:new Date().toISOString().split('T')[0]};
+  if(editIndex>=0) accounts[editIndex]=acc;
+  else accounts.push(acc);
+  save();closeModal();render();
+  toast(editIndex>=0?'✅ Atnaujinta!':'✅ Pridėta!');
+}
+
+function warmUp(idx) {
+  accounts[idx].warmDays=(accounts[idx].warmDays||0)+1;
+  if(accounts[idx].warmDays>=14&&accounts[idx].status==='warming'){
+    accounts[idx].status='active';
+    toast('🎉 Warming baigtas! Paskyra ACTIVE!');
+  } else {
+    if(accounts[idx].status==='new') accounts[idx].status='warming';
+    toast(`🔥 Warming +1 diena (${accounts[idx].warmDays}/14)`);
+  }
+  save();render();
+}
+
+function editAccount(idx){openModal(idx);}
+
+function deleteAccount(idx) {
+  if(confirm(`Ištrinti ${accounts[idx].tag}?`)){
+    accounts.splice(idx,1);save();render();
+    toast('🗑️ Ištrinta');
+  }
+}
+
+function togglePass(idx,pass) {
+  const el=document.getElementById(`pass-${idx}`);
+  el.textContent=el.textContent==='••••••••'?pass:'••••••••';
+}
+
+function toggleExport() {
+  const box=document.getElementById('export-box');
+  box.classList.toggle('open');
+  if(box.classList.contains('open')) generateExport();
+}
+
+function generateExport() {
+  const lines=accounts.map(a=>`  ${a.tag.padEnd(15)}: { platform: '${a.platform}', label: '${a.tag}', nisa: '${a.nisa}', active: ${a.status!=='banned'&&a.status!=='inactive'} },`).join('\n');
+  document.getElementById('export-code').textContent=`const ACCOUNTS = {\n${lines}\n};\n\nmodule.exports = { ACCOUNTS };`;
+}
+
+function copyExport() {
+  navigator.clipboard.writeText(document.getElementById('export-code').textContent);
+  toast('✅ accounts.js nukopijuotas!');
+}
+
+function copyAll() {
+  const lines=accounts.map(a=>`${a.tag} | ${a.platform} | ${a.gmail} | ${a.password} | ${a.phone||'-'} | ${a.status}`).join('\n');
+  navigator.clipboard.writeText(lines);
+  toast('✅ Sąrašas nukopijuotas!');
+}
+
+function save(){localStorage.setItem('sm_accounts',JSON.stringify(accounts));}
+
+function toast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+render();
+</script>
+</body>
+</html>
